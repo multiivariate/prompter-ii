@@ -16,9 +16,10 @@ contract Prompter is ERC721Enumerable, Ownable {
     using Strings for uint256;
     enum Status { Inactive, Private, Whitelist, Public }
 
-    mapping (string => bool) public prompts;
+    mapping (uint256 => string) private prompts;
+    mapping (string => bool) public promptCheck;
     mapping (address => uint256) public promptCount;
-    mapping (uint256 => string) private promptsWithIDs;
+    mapping (uint256 => uint256) public promptTimestamp;
     mapping (address => uint256) public whitelistCount;
     mapping (address => uint256) public privateCount;
     
@@ -48,7 +49,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         require(totalSupply() < maxSupply + 1, "Sold out.");
         checkRequirements(price, _prompt);
 
-        claimPrompt(_prompt);
+        claimPrompt(_prompt, block.timestamp);
     }
 
     function mintWL(string memory _prompt, bytes32[] calldata _merkleProof) public payable {
@@ -59,7 +60,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         checkRequirements(wlPrice, _prompt);
 
         whitelistCount[msg.sender] += 1;
-        claimPrompt(_prompt);
+        claimPrompt(_prompt, block.timestamp);
     }
 
     function mintPrivate(string memory _prompt, bytes32[] calldata _merkleProof) public {
@@ -70,25 +71,26 @@ contract Prompter is ERC721Enumerable, Ownable {
         checkRequirements(0, _prompt);
 
         privateCount[msg.sender] += 1;
-        claimPrompt(_prompt);
+        claimPrompt(_prompt, block.timestamp);
     }
 
     function checkRequirements(uint256 minPrice, string memory _prompt) internal {
         require(bytes(_prompt).length < 422, "Max length 421 // Only base64 characters");
-        require(prompts[_prompt] == false, "This prompt claimed.");
+        require(promptCheck[_prompt] == false, "This prompt claimed.");
         require(msg.value >= minPrice, "Art isn't expensive.");
     }
 
-    function claimPrompt(string memory _prompt) internal {
-        prompts[_prompt] = true;
-        promptsWithIDs[totalSupply() + 1] = _prompt;
+    function claimPrompt(string memory _prompt, uint256 _timestamp) internal {
+        promptCheck[_prompt] = true;
+        prompts[totalSupply() + 1] = _prompt;
         promptCount[msg.sender] += 1;
+        promptTimestamp[totalSupply() + 1] = _timestamp;
 
         _safeMint(msg.sender, totalSupply() + 1);
     }
 
     function adminMint(string memory _prompt) public onlyOwner {
-        claimPrompt(_prompt);
+        claimPrompt(_prompt, block.timestamp);
     }
 
     function buildImage(string memory _Prompt) internal pure returns (string memory) {
@@ -120,10 +122,7 @@ contract Prompter is ERC721Enumerable, Ownable {
                     bytes(
                         Base64.encode(
                             abi.encodePacked(
-                                '{"name":"', abi.encodePacked("#", _tokenId.toString()),'",',
-                                '"description":"Prompter is a collection by You and Monas.",',
-                                '"image":"data:image/svg+xml;base64', buildImage(promptsWithIDs[_tokenId]), '",',
-                                '"attributes": [{"Length": "', bytes(promptsWithIDs[_tokenId]).length ,'"}]}'
+                                '{"name":"', abi.encodePacked("#", _tokenId.toString()),'",','"description":"Prompter is a collection by You and Monas.",','"image":"data:image/svg+xml;base64', buildImage(prompts[_tokenId]), '",','"attributes": [{"Timestamp":"', promptTimestamp[_tokenId] ,'","Length":"', bytes(prompts[_tokenId]).length ,'"}]}'
                             )
                         )
                     )
