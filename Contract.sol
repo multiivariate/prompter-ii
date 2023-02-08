@@ -122,7 +122,7 @@ contract Prompter is ERC721Enumerable, Ownable {
                     bytes(
                         Base64.encode(
                             abi.encodePacked(
-                                '{"name":"', abi.encodePacked("#", _tokenId.toString()),'",','"description":"Prompter is a collection by You and Monas.",','"image":"data:image/svg+xml;base64', buildImage(prompts[_tokenId]), '",','"attributes": [{"Timestamp":"', promptTimestamp[_tokenId] ,'","Length":"', bytes(prompts[_tokenId]).length ,'"}]}'
+                                '{"name":"', abi.encodePacked("#", _tokenId.toString()),'",','"description":"Prompter is a collection by You and Monas.",','"image":"data:image/svg+xml;base64,', buildImage(prompts[_tokenId]), '",','"attributes": [{"Timestamp":"', promptTimestamp[_tokenId].toString() ,'","Length":"', bytes(prompts[_tokenId]).length.toString() ,'"}]}'
                             )
                         )
                     )
