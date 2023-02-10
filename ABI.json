@@ -531,6 +531,19 @@
 	{
 		"inputs": [
 			{
+				"internalType": "bytes32",
+				"name": "_mR",
+				"type": "bytes32"
+			}
+		],
+		"name": "setMerkleRoot",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "enum Prompter.Status",
 				"name": "_status",
 				"type": "uint8"
