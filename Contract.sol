@@ -42,10 +42,10 @@ contract Prompter is ERC721Enumerable, Ownable {
         saleStatus = Status.Inactive;
     }
 
-    function mint(string memory _prompt) public payable {
+     function mint(string memory _prompt) public payable {
         require(uint256(saleStatus) == 3, "Public sale isn't active.");
-        require(promptCount[msg.sender] < maxPerWallet + 1, "You can mint up to 5 tokens.");
-        require(totalSupply() < maxSupply + 1, "Sold out.");
+        require(promptCount[msg.sender] < maxPerWallet, "You can mint up to 5 tokens.");
+        require(totalSupply() < maxSupply, "Sold out.");
         checkRequirements(price, _prompt);
 
         claimPrompt(_prompt, block.timestamp);
@@ -53,8 +53,8 @@ contract Prompter is ERC721Enumerable, Ownable {
 
     function mintWL(string memory _prompt, bytes32[] calldata _merkleProof) public payable {
         require(uint256(saleStatus) == 2, "Whitelist sale isn't active.");
-        require(whitelistCount[msg.sender] < maxPerWalletWL + 1, "You can mint up to 2 tokens.");
-        require(totalSupply() < wlSupply + 1, "WL ended.");
+        require(whitelistCount[msg.sender] < maxPerWalletWL, "You can mint up to 2 tokens.");
+        require(totalSupply() < wlSupply + privateSupply, "WL ended.");
         require(MerkleProof.verify(_merkleProof, _merkleRoot, keccak256(abi.encodePacked(msg.sender))), "You're not whitelisted.");
         checkRequirements(wlPrice, _prompt);
 
@@ -64,14 +64,15 @@ contract Prompter is ERC721Enumerable, Ownable {
 
     function mintPrivate(string memory _prompt, bytes32[] calldata _merkleProof) public {
         require(uint256(saleStatus) == 1, "Private sale isn't active.");
-        require(privateCount[msg.sender] < maxPerWalletPrivate + 1, "You can mint up to 3 tokens.");
-        require(totalSupply() < privateSupply + 1, "Private sale ended.");
+        require(privateCount[msg.sender] < maxPerWalletPrivate, "You can mint up to 3 tokens.");
+        require(totalSupply() < privateSupply, "Private sale ended.");
         require(MerkleProof.verify(_merkleProof, _merkleRoot, keccak256(abi.encodePacked(msg.sender))), "You don't have free mint pass.");
         checkRequirements(0, _prompt);
 
         privateCount[msg.sender] += 1;
         claimPrompt(_prompt, block.timestamp);
     }
+
 
     function checkRequirements(uint256 minPrice, string memory _prompt) internal {
         require(bytes(_prompt).length < 422, "Max length 421 // Only base64 characters");
