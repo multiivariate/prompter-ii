@@ -31,8 +31,8 @@ contract Prompter is ERC721Enumerable, Ownable {
     uint256 public maxPerWalletPrivate = 3;
 
     uint256 public maxSupply = 10000;
-    uint256 public privateSupply = 1260;
     uint256 public wlSupply = 1000;
+    uint256 public privateSupply = 1260;
 
     bytes32 private _merkleRoot;
 
