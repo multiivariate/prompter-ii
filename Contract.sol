@@ -42,7 +42,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         saleStatus = Status.Inactive;
     }
 
-     function mint(string memory _prompt) public payable {
+    function mint(string memory _prompt) public payable {
         require(uint256(saleStatus) == 3, "Public sale isn't active.");
         require(promptCount[msg.sender] < maxPerWallet, "You can mint up to 5 tokens.");
         require(totalSupply() < maxSupply, "Sold out.");
