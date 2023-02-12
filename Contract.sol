@@ -34,7 +34,8 @@ contract Prompter is ERC721Enumerable, Ownable {
     uint256 public wlSupply = 1000;
     uint256 public privateSupply = 1260;
 
-    bytes32 private _merkleRoot;
+    bytes32 private _merkleRootWL;
+    bytes32 private _merkleRootPrivate;
 
     Status public saleStatus;
     
@@ -55,7 +56,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         require(uint256(saleStatus) == 2, "Whitelist sale isn't active.");
         require(whitelistCount[msg.sender] < maxPerWalletWL, "You can mint up to 2 tokens.");
         require(totalSupply() < wlSupply + privateSupply, "WL ended.");
-        require(MerkleProof.verify(_merkleProof, _merkleRoot, keccak256(abi.encodePacked(msg.sender))), "You're not whitelisted.");
+        require(MerkleProof.verify(_merkleProof, _merkleRootWL, keccak256(abi.encodePacked(msg.sender))), "You're not whitelisted.");
         checkRequirements(wlPrice, _prompt);
 
         whitelistCount[msg.sender] += 1;
@@ -66,7 +67,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         require(uint256(saleStatus) == 1, "Private sale isn't active.");
         require(privateCount[msg.sender] < maxPerWalletPrivate, "You can mint up to 3 tokens.");
         require(totalSupply() < privateSupply, "Private sale ended.");
-        require(MerkleProof.verify(_merkleProof, _merkleRoot, keccak256(abi.encodePacked(msg.sender))), "You don't have free mint pass.");
+        require(MerkleProof.verify(_merkleProof, _merkleRootPrivate, keccak256(abi.encodePacked(msg.sender))), "You don't have free mint pass.");
         checkRequirements(0, _prompt);
 
         privateCount[msg.sender] += 1;
@@ -133,8 +134,9 @@ contract Prompter is ERC721Enumerable, Ownable {
         saleStatus = _status;
     }
 
-    function setMerkleRoot(bytes32 _mR) public onlyOwner {
-        _merkleRoot = _mR;
+    function setMerkleRoot(bytes32 _rootWL, bytes32 _rootPrivate) public onlyOwner {
+        _merkleRootWL = _rootWL;
+        _merkleRootPrivate = _rootPrivate;
     }
 
     function withdraw() public payable onlyOwner {
