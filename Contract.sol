@@ -94,20 +94,15 @@ contract Prompter is ERC721Enumerable, Ownable {
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function buildImage(string memory _Prompt) internal pure returns (string memory) {
+    function buildImage(string memory _prompt) internal pure returns (string memory) {
         return
             Base64.encode(
                 abi.encodePacked(
-                    '<svg width="1000" height="1000" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">',
-                    '<rect height="100%" width="100%" y="0" x="0" fill="#f5f5f5"/>',
-                    '<defs>',
-                    '<path id="path1" d="M29.43,81.73H970.93M29.43,147.1H970.93M28.93,212.5H970.41M29.21,277.82H970.69M29.21,343.17H970.69M29.21,408.55H970.69M28.7,473.91H970.18M29.8,539.26H971.3M29.8,604.64H971.3M29.31,670.04H970.77M29.59,735.35H971.07M29.59,800.71H971.07M29.59,866.09H971.07M29.07,931.44H970.53"></path>',
-                    '<style type="text/css">@import url(http://fonts.googleapis.com/css?family=Space+Grotesk);</style>',
-                    '</defs>',
-                    '<use xlink:href="#path1" />',
-                    '<text font-size="52.2px" fill="#0c0c0c" font-weight="500" font-family="Space Grotesk">',
-                    '<textPath xlink:href="#path1">', _Prompt,'</textPath></text>',
-                    '</svg>'
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">',
+                    '<style>@import url(https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@1,500&display=swap);svg{border:1px solid #111}span{fill:#111;font-family:"Inter Tight";font-size:50px;overflow-wrap:break-word;line-height:100%}foreignObject{padding:45px}</style>',
+                    '<svg overflow="visible">',
+                    '<rect width="1000" height="1000" fill="white"/>',
+                    '<foreignObject y="-10" width="1000" height="1000"><span>', _prompt ,'</span></foreignObject></svg></svg>'
                 )
             );
     }
