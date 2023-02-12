@@ -99,7 +99,7 @@ contract Prompter is ERC721Enumerable, Ownable {
             Base64.encode(
                 abi.encodePacked(
                     '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">',
-                    '<style>@import url(https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@1,500&display=swap);svg{border:1px solid #111}span{fill:#111;font-family:"Inter Tight";font-size:50px;overflow-wrap:break-word;line-height:100%}foreignObject{padding:45px}</style>',
+                    '<style>@import url(https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@1,500&display=swap);span{fill:#111;font-family:"Inter Tight";font-size:50px;overflow-wrap:break-word;line-height:100%}foreignObject{padding:45px}</style>',
                     '<svg overflow="visible">',
                     '<rect width="1000" height="1000" fill="white"/>',
                     '<foreignObject y="-10" width="1000" height="1000"><span>', _prompt ,'</span></foreignObject></svg></svg>'
