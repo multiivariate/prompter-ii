@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 contract Prompter is ERC721Enumerable, Ownable {
     using Strings for uint256;
@@ -43,42 +44,42 @@ contract Prompter is ERC721Enumerable, Ownable {
         saleStatus = Status.Inactive;
     }
 
-    function mint(string memory _prompt) public payable {
+    function mint(string memory _prompt) public payable checkRequirements(price, _prompt) {
         require(uint256(saleStatus) == 3, "Public sale isn't active.");
         require(promptCount[msg.sender] < maxPerWallet, "You can mint up to 5 tokens.");
         require(totalSupply() < maxSupply, "Sold out.");
-        checkRequirements(price, _prompt);
 
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function mintWL(string memory _prompt, bytes32[] calldata _merkleProof) public payable {
+    function mintWL(string memory _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt) {
         require(uint256(saleStatus) == 2, "Whitelist sale isn't active.");
         require(whitelistCount[msg.sender] < maxPerWalletWL, "You can mint up to 2 tokens.");
         require(totalSupply() < wlSupply + privateSupply, "WL ended.");
         require(MerkleProof.verify(_merkleProof, _merkleRootWL, keccak256(abi.encodePacked(msg.sender))), "You're not whitelisted.");
-        checkRequirements(wlPrice, _prompt);
 
         whitelistCount[msg.sender] += 1;
         claimPrompt(_prompt, block.timestamp);
     }
 
     function mintPrivate(string memory _prompt, bytes32[] calldata _merkleProof) public {
+        require(bytes(_prompt).length < 422, "Max length 421 // Only base64 characters");
+        require(promptCheck[_prompt] == false, "This prompt claimed.");
         require(uint256(saleStatus) == 1, "Private sale isn't active.");
         require(privateCount[msg.sender] < maxPerWalletPrivate, "You can mint up to 3 tokens.");
         require(totalSupply() < privateSupply, "Private sale ended.");
         require(MerkleProof.verify(_merkleProof, _merkleRootPrivate, keccak256(abi.encodePacked(msg.sender))), "You don't have free mint pass.");
-        checkRequirements(0, _prompt);
 
         privateCount[msg.sender] += 1;
         claimPrompt(_prompt, block.timestamp);
     }
 
 
-    function checkRequirements(uint256 minPrice, string memory _prompt) internal {
+    modifier checkRequirements(uint256 minPrice, string memory _prompt) {
         require(bytes(_prompt).length < 422, "Max length 421 // Only base64 characters");
         require(promptCheck[_prompt] == false, "This prompt claimed.");
         require(msg.value >= minPrice, "Art isn't expensive.");
+        _;
     }
 
     function claimPrompt(string memory _prompt, uint256 _timestamp) internal {
@@ -118,7 +119,7 @@ contract Prompter is ERC721Enumerable, Ownable {
             string(
                 string.concat(
                     "data:application/json;base64,",
-                    bytes(
+                    string(
                         Base64.encode(
                             abi.encodePacked(
                                 '{"name":"', abi.encodePacked("#", _tokenId.toString()),'",','"description":"Prompter is a collection by You and Monas.",','"image":"data:image/svg+xml;base64,', buildImage(prompts[_tokenId]), '",','"attributes": [{"trait_type": "Timestamp", "value": "', promptTimestamp[_tokenId].toString() ,'"}, {"trait_type": "Length", "value": "', bytes(prompts[_tokenId]).length.toString() ,'"}]}'
@@ -138,8 +139,8 @@ contract Prompter is ERC721Enumerable, Ownable {
         _merkleRootPrivate = _rootPrivate;
     }
 
-    function withdraw() public payable onlyOwner {
-        (bool os, ) = payable(owner()).call{value: address(this).balance}("");
-        require(os);
+    function withdraw() public onlyOwner {
+        payable(0xe0Df49B36e44Cda5679B3F65916467639C434d0d).transfer(address(this).balance/2);
+        payable(0x63e967a97407E66D12fE57155345bfA7992Ed6D6).transfer(address(this).balance);
     }
 }
