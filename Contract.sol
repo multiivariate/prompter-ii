@@ -38,10 +38,13 @@ contract Prompter is ERC721Enumerable, Ownable {
     bytes32 private _merkleRootWL;
     bytes32 private _merkleRootPrivate;
 
+    address public frac;
+
     Status public saleStatus;
     
     constructor() ERC721("Prompter II", "TPC") {
         saleStatus = Status.Inactive;
+        frac = 0x63e967a97407E66D12fE57155345bfA7992Ed6D6;
     }
 
     function mint(string memory _prompt) public payable checkRequirements(price, _prompt) {
@@ -140,7 +143,7 @@ contract Prompter is ERC721Enumerable, Ownable {
     }
 
     function withdraw() public onlyOwner {
-        payable(0xe0Df49B36e44Cda5679B3F65916467639C434d0d).transfer(address(this).balance/2);
-        payable(0x63e967a97407E66D12fE57155345bfA7992Ed6D6).transfer(address(this).balance);
+        payable(msg.sender).transfer(address(this).balance/2);
+        payable(frac).transfer(address(this).balance);
     }
 }
