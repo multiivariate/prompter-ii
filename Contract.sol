@@ -12,8 +12,9 @@ import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "https://github.com/ProjectOpenSea/operator-filter-registry/blob/main/src/DefaultOperatorFilterer.sol";
 
-contract Prompter is ERC721Enumerable, Ownable {
+contract Prompter is ERC721Enumerable, Ownable, DefaultOperatorFilterer {
     using Strings for uint256;
     enum Status { Inactive, Private, Whitelist, Public }
 
@@ -35,57 +36,76 @@ contract Prompter is ERC721Enumerable, Ownable {
     uint256 public wlSupply = 1000;
     uint256 public privateSupply = 1260;
 
-    bytes32 private _merkleRootWL;
-    bytes32 private _merkleRootPrivate;
+    uint256 royaltyAmount;
+
+    bytes32 private merkleRootWL;
+    bytes32 private merkleRootPrivate;
 
     address public frac;
+    address royalties_recipient;
 
     Status public saleStatus;
+
+    
+    error FundsInsufficient();
+    error MerkleProofInvalid();
+    error MintLimitReached();
+    error PromptClaimed();
+    error PromptInvalid();
+    error SaleStatusInvalid();
+    error SupplyLimitReached();
     
     constructor() ERC721("Prompter II", "TPC") {
         saleStatus = Status.Inactive;
         frac = 0x63e967a97407E66D12fE57155345bfA7992Ed6D6;
     }
 
-    function mint(string calldata _prompt) public payable checkRequirements(price, _prompt) {
-        require(uint256(saleStatus) == 3, "Public sale isn't active.");
-        require(promptCount[msg.sender] < maxPerWallet, "You can mint up to 5 tokens.");
-        require(totalSupply() < maxSupply, "Sold out.");
+     function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
+        return
+        ERC721.supportsInterface(interfaceId) ||
+        interfaceId == type(IERC2981).interfaceId ||
+        super.supportsInterface(interfaceId);
+    }
 
+
+    modifier checkRequirements(uint256 _minPrice, string calldata _prompt, uint256 _saleStatus) {
+        if(bytes(_prompt).length > 420) revert PromptInvalid();
+        if(promptCheck[_prompt] == true) revert PromptClaimed();
+        if(msg.value < _minPrice) revert FundsInsufficient();
+        if(uint256(saleStatus) != _saleStatus) revert SaleStatusInvalid();
+        uint256 maxMintPerWallet = _saleStatus == 1 ? maxPerWalletPrivate : _saleStatus == 2 ? maxPerWalletWL : maxPerWallet;
+        uint256 mintLimit = _saleStatus == 1 ? privateSupply : _saleStatus == 2 ? (privateSupply + wlSupply) : maxSupply;
+        uint256 mintCount = _saleStatus == 1 ? privateCount[msg.sender] : _saleStatus == 2 ? whitelistCount[msg.sender] :  promptCount[msg.sender];
+        if(totalSupply() >= mintLimit) revert SupplyLimitReached();
+        if(mintCount >= maxMintPerWallet) revert MintLimitReached();
+        _;
+    }
+
+    function mint(string calldata _prompt) public payable checkRequirements(price, _prompt, 3) {
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function mintWL(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt) {
-        require(uint256(saleStatus) == 2, "Whitelist sale isn't active.");
-        require(whitelistCount[msg.sender] < maxPerWalletWL, "You can mint up to 2 tokens.");
-        require(totalSupply() < wlSupply + privateSupply, "WL ended.");
-        require(MerkleProof.verify(_merkleProof, _merkleRootWL, keccak256(abi.encodePacked(msg.sender))), "You're not whitelisted.");
+    function mintWL(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt, 2){
+        if(!MerkleProof.verify(_merkleProof, merkleRootWL, keccak256(abi.encodePacked(msg.sender)))) revert MerkleProofInvalid();
 
         whitelistCount[msg.sender] += 1;
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function mintPrivate(string calldata _prompt, bytes32[] calldata _merkleProof) public {
-        require(bytes(_prompt).length < 422, "Max length 421 // Only base64 characters");
-        require(promptCheck[_prompt] == false, "This prompt claimed.");
-        require(uint256(saleStatus) == 1, "Private sale isn't active.");
-        require(privateCount[msg.sender] < maxPerWalletPrivate, "You can mint up to 3 tokens.");
-        require(totalSupply() < privateSupply, "Private sale ended.");
-        require(MerkleProof.verify(_merkleProof, _merkleRootPrivate, keccak256(abi.encodePacked(msg.sender))), "You don't have free mint pass.");
+    function mintPrivate(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(0, _prompt, 1){
+        if(!MerkleProof.verify(_merkleProof, merkleRootPrivate, keccak256(abi.encodePacked(msg.sender)))) revert MerkleProofInvalid();
 
         privateCount[msg.sender] += 1;
         claimPrompt(_prompt, block.timestamp);
     }
 
-
-    modifier checkRequirements(uint256 minPrice, string calldata _prompt) {
-        require(bytes(_prompt).length < 421, "Max length 420 // Only base64 characters");
-        require(promptCheck[_prompt] == false, "This prompt claimed.");
-        require(msg.value >= minPrice, "Art isn't expensive.");
-        _;
-    }
-
-    function claimPrompt(string calldata _prompt, uint256 _timestamp) internal {
+    function claimPrompt(string memory _prompt, uint256 _timestamp) internal {
         promptCheck[_prompt] = true;
         prompts[totalSupply() + 1] = _prompt;
         promptCount[msg.sender] += 1;
@@ -98,7 +118,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function buildImage(string calldata _prompt) internal pure returns (string memory) {
+    function buildImage(string memory _prompt) internal pure returns (string memory) {
         return
             Base64.encode(
                 abi.encodePacked(
@@ -132,14 +152,51 @@ contract Prompter is ERC721Enumerable, Ownable {
                 )
             );
     }
-
+    
     function setSaleStatus(Status _status) public onlyOwner {
         saleStatus = _status;
     }
 
     function setMerkleRoot(bytes32 _rootWL, bytes32 _rootPrivate) public onlyOwner {
-        _merkleRootWL = _rootWL;
-        _merkleRootPrivate = _rootPrivate;
+        merkleRootWL = _rootWL;
+        merkleRootPrivate = _rootPrivate;
+    }
+
+    function setApprovalForAll(address operator, bool approved) public override(ERC721, IERC721) onlyAllowedOperatorApproval(operator) {
+        super.setApprovalForAll(operator, approved);
+    }
+
+    function approve(address operator, uint256 tokenId) public override(ERC721, IERC721) onlyAllowedOperatorApproval(operator) {
+        super.approve(operator, tokenId);
+    }
+
+    function transferFrom(address from, address to, uint256 tokenId) public override(ERC721, IERC721) onlyAllowedOperator(from) {
+        super.transferFrom(from, to, tokenId);
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) public override(ERC721, IERC721) onlyAllowedOperator(from) {
+        super.safeTransferFrom(from, to, tokenId);
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data)
+        public
+        override(ERC721, IERC721)
+        onlyAllowedOperator(from)
+    {
+        super.safeTransferFrom(from, to, tokenId, data);
+    }
+
+
+    function setRoyalties(address payable _recipient, uint256 _royaltyPerCent) external onlyOwner {
+        royalties_recipient = _recipient;
+        royaltyAmount = _royaltyPerCent;
+    }
+
+    function royaltyInfo(uint256 salePrice) external view returns (address, uint256) {
+        if(royalties_recipient != address(0)){
+            return (royalties_recipient, (salePrice * royaltyAmount) / 100 );
+        }
+        return (address(0), 0);
     }
 
     function withdraw() public onlyOwner {
