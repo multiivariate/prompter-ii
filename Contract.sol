@@ -47,7 +47,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         frac = 0x63e967a97407E66D12fE57155345bfA7992Ed6D6;
     }
 
-    function mint(string memory _prompt) public payable checkRequirements(price, _prompt) {
+    function mint(string calldata _prompt) public payable checkRequirements(price, _prompt) {
         require(uint256(saleStatus) == 3, "Public sale isn't active.");
         require(promptCount[msg.sender] < maxPerWallet, "You can mint up to 5 tokens.");
         require(totalSupply() < maxSupply, "Sold out.");
@@ -55,7 +55,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function mintWL(string memory _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt) {
+    function mintWL(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt) {
         require(uint256(saleStatus) == 2, "Whitelist sale isn't active.");
         require(whitelistCount[msg.sender] < maxPerWalletWL, "You can mint up to 2 tokens.");
         require(totalSupply() < wlSupply + privateSupply, "WL ended.");
@@ -65,7 +65,7 @@ contract Prompter is ERC721Enumerable, Ownable {
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function mintPrivate(string memory _prompt, bytes32[] calldata _merkleProof) public {
+    function mintPrivate(string calldata _prompt, bytes32[] calldata _merkleProof) public {
         require(bytes(_prompt).length < 422, "Max length 421 // Only base64 characters");
         require(promptCheck[_prompt] == false, "This prompt claimed.");
         require(uint256(saleStatus) == 1, "Private sale isn't active.");
@@ -78,14 +78,14 @@ contract Prompter is ERC721Enumerable, Ownable {
     }
 
 
-    modifier checkRequirements(uint256 minPrice, string memory _prompt) {
-        require(bytes(_prompt).length < 422, "Max length 421 // Only base64 characters");
+    modifier checkRequirements(uint256 minPrice, string calldata _prompt) {
+        require(bytes(_prompt).length < 421, "Max length 420 // Only base64 characters");
         require(promptCheck[_prompt] == false, "This prompt claimed.");
         require(msg.value >= minPrice, "Art isn't expensive.");
         _;
     }
 
-    function claimPrompt(string memory _prompt, uint256 _timestamp) internal {
+    function claimPrompt(string calldata _prompt, uint256 _timestamp) internal {
         promptCheck[_prompt] = true;
         prompts[totalSupply() + 1] = _prompt;
         promptCount[msg.sender] += 1;
@@ -94,11 +94,11 @@ contract Prompter is ERC721Enumerable, Ownable {
         _safeMint(msg.sender, totalSupply() + 1);
     }
 
-    function adminMint(string memory _prompt) public onlyOwner {
+    function adminMint(string calldata _prompt) public onlyOwner {
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function buildImage(string memory _prompt) internal pure returns (string memory) {
+    function buildImage(string calldata _prompt) internal pure returns (string memory) {
         return
             Base64.encode(
                 abi.encodePacked(
