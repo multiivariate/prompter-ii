@@ -9,12 +9,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "https://github.com/ProjectOpenSea/operator-filter-registry/blob/main/src/DefaultOperatorFilterer.sol";
 
-contract Prompter is ERC721Enumerable, Ownable, DefaultOperatorFilterer {
+contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
     using Strings for uint256;
     enum Status { Inactive, Private, Whitelist, Public }
 
@@ -35,6 +35,7 @@ contract Prompter is ERC721Enumerable, Ownable, DefaultOperatorFilterer {
     uint256 public maxSupply = 10000;
     uint256 public wlSupply = 1000;
     uint256 public privateSupply = 1260;
+    uint256 public totalSupply;
 
     uint256 royaltyAmount;
 
@@ -60,13 +61,7 @@ contract Prompter is ERC721Enumerable, Ownable, DefaultOperatorFilterer {
         frac = 0x63e967a97407E66D12fE57155345bfA7992Ed6D6;
     }
 
-     function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
         ERC721.supportsInterface(interfaceId) ||
         interfaceId == type(IERC2981).interfaceId ||
@@ -82,7 +77,7 @@ contract Prompter is ERC721Enumerable, Ownable, DefaultOperatorFilterer {
         uint256 maxMintPerWallet = _saleStatus == 1 ? maxPerWalletPrivate : _saleStatus == 2 ? maxPerWalletWL : maxPerWallet;
         uint256 mintLimit = _saleStatus == 1 ? privateSupply : _saleStatus == 2 ? (privateSupply + wlSupply) : maxSupply;
         uint256 mintCount = _saleStatus == 1 ? privateCount[msg.sender] : _saleStatus == 2 ? whitelistCount[msg.sender] :  promptCount[msg.sender];
-        if(totalSupply() >= mintLimit) revert SupplyLimitReached();
+        if(totalSupply >= mintLimit) revert SupplyLimitReached();
         if(mintCount >= maxMintPerWallet) revert MintLimitReached();
         _;
     }
@@ -107,11 +102,11 @@ contract Prompter is ERC721Enumerable, Ownable, DefaultOperatorFilterer {
 
     function claimPrompt(string memory _prompt, uint256 _timestamp) internal {
         promptCheck[_prompt] = true;
-        prompts[totalSupply() + 1] = _prompt;
+        prompts[totalSupply ++] = _prompt;
         promptCount[msg.sender] += 1;
-        promptTimestamp[totalSupply() + 1] = _timestamp;
+        promptTimestamp[totalSupply ++] = _timestamp;
 
-        _safeMint(msg.sender, totalSupply() + 1);
+        _safeMint(msg.sender, totalSupply ++);
     }
 
     function adminMint(string calldata _prompt) public onlyOwner {
@@ -128,7 +123,7 @@ contract Prompter is ERC721Enumerable, Ownable, DefaultOperatorFilterer {
                     '<path id="path1" d="M29.43,81.73H970.93M29.43,147.1H970.93M28.93,212.5H970.41M29.21,277.82H970.69M29.21,343.17H970.69M29.21,408.55H970.69M28.7,473.91H970.18M29.8,539.26H971.3M29.8,604.64H971.3M29.31,670.04H970.77M29.59,735.35H971.07M29.59,800.71H971.07M29.59,866.09H971.07M29.07,931.44H970.53"></path>',
                     '</defs>',
                     '<use xlink:href="#path1" />',
-                    '<text font-size="52.2px" fill="#0c0c0c" font-family="Courier New">',
+                    '<text font-size="50.50px" fill="#0c0c0c" font-family="Courier New" font-variant="normal" font-weight="bold">',
                     '<textPath xlink:href="#path1">', _prompt,'</textPath></text>',
                     '</svg>'
                 )
@@ -162,27 +157,23 @@ contract Prompter is ERC721Enumerable, Ownable, DefaultOperatorFilterer {
         merkleRootPrivate = _rootPrivate;
     }
 
-    function setApprovalForAll(address operator, bool approved) public override(ERC721, IERC721) onlyAllowedOperatorApproval(operator) {
+    function setApprovalForAll(address operator, bool approved) public override(ERC721) onlyAllowedOperatorApproval(operator) {
         super.setApprovalForAll(operator, approved);
     }
 
-    function approve(address operator, uint256 tokenId) public override(ERC721, IERC721) onlyAllowedOperatorApproval(operator) {
+    function approve(address operator, uint256 tokenId) public override(ERC721) onlyAllowedOperatorApproval(operator) {
         super.approve(operator, tokenId);
     }
 
-    function transferFrom(address from, address to, uint256 tokenId) public override(ERC721, IERC721) onlyAllowedOperator(from) {
+    function transferFrom(address from, address to, uint256 tokenId) public override(ERC721) onlyAllowedOperator(from) {
         super.transferFrom(from, to, tokenId);
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId) public override(ERC721, IERC721) onlyAllowedOperator(from) {
+    function safeTransferFrom(address from, address to, uint256 tokenId) public override(ERC721) onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId);
     }
 
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data)
-        public
-        override(ERC721, IERC721)
-        onlyAllowedOperator(from)
-    {
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public override(ERC721) onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId, data);
     }
 
