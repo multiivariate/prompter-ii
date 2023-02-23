@@ -47,7 +47,6 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
 
     Status public saleStatus;
 
-    
     error FundsInsufficient();
     error MerkleProofInvalid();
     error MintLimitReached();
@@ -61,13 +60,45 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
         frac = 0x63e967a97407E66D12fE57155345bfA7992Ed6D6;
     }
 
-     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
         ERC721.supportsInterface(interfaceId) ||
         interfaceId == type(IERC2981).interfaceId ||
         super.supportsInterface(interfaceId);
     }
 
+    function mint(string calldata _prompt) public payable checkRequirements(price, _prompt, 3) {
+        claimPrompt(_prompt, block.timestamp);
+    }
+
+    function mintWL(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt, 2){
+        if(!MerkleProof.verify(_merkleProof, merkleRootWL, keccak256(abi.encodePacked(msg.sender)))) revert MerkleProofInvalid();
+
+        whitelistCount[msg.sender]++;
+        claimPrompt(_prompt, block.timestamp);
+    }
+
+    function mintPrivate(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(0, _prompt, 1){
+        if(!MerkleProof.verify(_merkleProof, merkleRootPrivate, keccak256(abi.encodePacked(msg.sender)))) revert MerkleProofInvalid();
+
+        privateCount[msg.sender]++;
+        claimPrompt(_prompt, block.timestamp);
+    }
+
+    function claimPrompt(string memory _prompt, uint256 _timestamp) internal {
+        promptCheck[_prompt] = true;
+        prompts[totalSupply] = _prompt;
+        promptCount[msg.sender]++;
+        promptTimestamp[totalSupply] = _timestamp;
+
+        _safeMint(msg.sender, totalSupply);
+
+        totalSupply++;
+    }
+
+    function adminMint(string calldata _prompt) public onlyOwner {
+        claimPrompt(_prompt, block.timestamp);
+    }
 
     modifier checkRequirements(uint256 _minPrice, string calldata _prompt, uint256 _saleStatus) {
         if(bytes(_prompt).length > 420) revert PromptInvalid();
@@ -80,37 +111,6 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
         if(totalSupply >= mintLimit) revert SupplyLimitReached();
         if(mintCount >= maxMintPerWallet) revert MintLimitReached();
         _;
-    }
-
-    function mint(string calldata _prompt) public payable checkRequirements(price, _prompt, 3) {
-        claimPrompt(_prompt, block.timestamp);
-    }
-
-    function mintWL(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt, 2){
-        if(!MerkleProof.verify(_merkleProof, merkleRootWL, keccak256(abi.encodePacked(msg.sender)))) revert MerkleProofInvalid();
-
-        whitelistCount[msg.sender] += 1;
-        claimPrompt(_prompt, block.timestamp);
-    }
-
-    function mintPrivate(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(0, _prompt, 1){
-        if(!MerkleProof.verify(_merkleProof, merkleRootPrivate, keccak256(abi.encodePacked(msg.sender)))) revert MerkleProofInvalid();
-
-        privateCount[msg.sender] += 1;
-        claimPrompt(_prompt, block.timestamp);
-    }
-
-    function claimPrompt(string memory _prompt, uint256 _timestamp) internal {
-        promptCheck[_prompt] = true;
-        prompts[totalSupply ++] = _prompt;
-        promptCount[msg.sender] += 1;
-        promptTimestamp[totalSupply ++] = _timestamp;
-
-        _safeMint(msg.sender, totalSupply ++);
-    }
-
-    function adminMint(string calldata _prompt) public onlyOwner {
-        claimPrompt(_prompt, block.timestamp);
     }
 
     function buildImage(string memory _prompt) internal pure returns (string memory) {
