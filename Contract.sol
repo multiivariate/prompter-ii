@@ -25,16 +25,16 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
     mapping (address => uint256) public whitelistCount;
     mapping (address => uint256) public privateCount;
     
-    uint256 public price = 0.0069 ether;
-    uint256 public wlPrice = 0.0042 ether;
+    uint256 public constant price = 0.0069 ether;
+    uint256 public constant wlPrice = 0.0042 ether;
 
-    uint256 public maxPerWallet = 5;
-    uint256 public maxPerWalletWL = 2;
-    uint256 public maxPerWalletPrivate = 3;
+    uint256 public constant maxPerWallet = 5;
+    uint256 public constant maxPerWalletWL = 2;
+    uint256 public constant maxPerWalletPrivate = 3;
 
-    uint256 public maxSupply = 10000;
-    uint256 public wlSupply = 1000;
-    uint256 public privateSupply = 1260;
+    uint256 public constant maxSupply = 10000;
+    uint256 public constant wlSupply = 1000;
+    uint256 public constant privateSupply = 1260;
     uint256 public totalSupply;
 
     uint256 royaltyAmount;
@@ -59,6 +59,20 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
         saleStatus = Status.Inactive;
         frac = 0x63e967a97407E66D12fE57155345bfA7992Ed6D6;
     }
+
+    modifier checkRequirements(uint256 _minPrice, string calldata _prompt, uint256 _saleStatus) {
+        if(bytes(_prompt).length > 420) revert PromptInvalid();
+        if(promptCheck[_prompt] == true) revert PromptClaimed();
+        if(msg.value < _minPrice) revert FundsInsufficient();
+        if(uint256(saleStatus) != _saleStatus) revert SaleStatusInvalid();
+        uint256 maxMintPerWallet = _saleStatus == 1 ? maxPerWalletPrivate : _saleStatus == 2 ? maxPerWalletWL : maxPerWallet;
+        uint256 mintLimit = _saleStatus == 1 ? privateSupply : _saleStatus == 2 ? (privateSupply + wlSupply) : maxSupply;
+        uint256 mintCount = _saleStatus == 1 ? privateCount[msg.sender] : _saleStatus == 2 ? whitelistCount[msg.sender] :  promptCount[msg.sender];
+        if(totalSupply >= mintLimit) revert SupplyLimitReached();
+        if(mintCount >= maxMintPerWallet) revert MintLimitReached();
+        _;
+    }
+
 
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
@@ -86,31 +100,17 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
     }
 
     function claimPrompt(string memory _prompt, uint256 _timestamp) internal {
+        totalSupply++;
         promptCheck[_prompt] = true;
         prompts[totalSupply] = _prompt;
         promptCount[msg.sender]++;
         promptTimestamp[totalSupply] = _timestamp;
 
         _safeMint(msg.sender, totalSupply);
-
-        totalSupply++;
     }
 
     function adminMint(string calldata _prompt) public onlyOwner {
         claimPrompt(_prompt, block.timestamp);
-    }
-
-    modifier checkRequirements(uint256 _minPrice, string calldata _prompt, uint256 _saleStatus) {
-        if(bytes(_prompt).length > 420) revert PromptInvalid();
-        if(promptCheck[_prompt] == true) revert PromptClaimed();
-        if(msg.value < _minPrice) revert FundsInsufficient();
-        if(uint256(saleStatus) != _saleStatus) revert SaleStatusInvalid();
-        uint256 maxMintPerWallet = _saleStatus == 1 ? maxPerWalletPrivate : _saleStatus == 2 ? maxPerWalletWL : maxPerWallet;
-        uint256 mintLimit = _saleStatus == 1 ? privateSupply : _saleStatus == 2 ? (privateSupply + wlSupply) : maxSupply;
-        uint256 mintCount = _saleStatus == 1 ? privateCount[msg.sender] : _saleStatus == 2 ? whitelistCount[msg.sender] :  promptCount[msg.sender];
-        if(totalSupply >= mintLimit) revert SupplyLimitReached();
-        if(mintCount >= maxMintPerWallet) revert MintLimitReached();
-        _;
     }
 
     function buildImage(string memory _prompt) internal pure returns (string memory) {
