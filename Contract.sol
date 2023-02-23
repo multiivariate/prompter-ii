@@ -69,7 +69,7 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
         uint256 mintLimit = _saleStatus == 1 ? privateSupply : _saleStatus == 2 ? (privateSupply + wlSupply) : maxSupply;
         uint256 mintCount = _saleStatus == 1 ? privateCount[msg.sender] : _saleStatus == 2 ? whitelistCount[msg.sender] : promptCount[msg.sender];
         if(totalSupply + 1 >= mintLimit) revert SupplyLimitReached();
-        if(mintCount + 1 >= maxMintPerWallet) revert MintLimitReached();
+        if(mintCount >= maxMintPerWallet) revert MintLimitReached();
         _;
     }
 
