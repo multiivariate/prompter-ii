@@ -4,6 +4,19 @@ pragma solidity >=0.8.0 <0.9.0;
 // @creator: 0xmonas.eth
 // @author: f
 
+////////////////////////////
+//                        //
+//                        //
+//          ████          //
+//          ████          //
+//          ████          //
+//          ████          //
+//          ████          //
+//          ████          //
+//                        //
+//                        //
+////////////////////////////
+
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -140,7 +153,7 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
                     string(
                         Base64.encode(
                             abi.encodePacked(
-                                '{"name":"', abi.encodePacked("#", _tokenId.toString()),'",','"description":"Prompter is a collection by You and Monas.",','"image":"data:image/svg+xml;base64,', buildImage(prompts[_tokenId]), '",','"attributes": [{"trait_type": "Timestamp", "value": "', promptTimestamp[_tokenId].toString() ,'"}, {"trait_type": "Length", "value": "', bytes(prompts[_tokenId]).length.toString() ,'"}]}'
+                                '{"name":"', abi.encodePacked("P #", _tokenId.toString()),'",','"description":"Prompter is a collection by You and Monas.",','"image":"data:image/svg+xml;base64,', buildImage(prompts[_tokenId]), '",','"attributes": [{"trait_type": "Timestamp", "value": "', promptTimestamp[_tokenId].toString() ,'"}, {"trait_type": "Length", "value": "', bytes(prompts[_tokenId]).length.toString() ,'"}]}'
                             )
                         )
                     )
