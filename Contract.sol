@@ -73,14 +73,11 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
         frac = 0x63e967a97407E66D12fE57155345bfA7992Ed6D6;
     }
 
-    modifier checkRequirements(uint256 _minPrice, string calldata _prompt, uint256 _saleStatus) {
+    modifier checkRequirements(uint256 _minPrice, string calldata _prompt, uint256 _saleStatus, uint256 mintLimit, uint256 maxMintPerWallet, uint256 mintCount) {
         if(bytes(_prompt).length > 420) revert PromptInvalid();
         if(promptCheck[_prompt] == true) revert PromptClaimed();
         if(msg.value < _minPrice) revert FundsInsufficient();
         if(uint256(saleStatus) != _saleStatus) revert SaleStatusInvalid();
-        uint256 maxMintPerWallet = _saleStatus == 1 ? maxPerWalletPrivate : _saleStatus == 2 ? maxPerWalletWL : maxPerWallet;
-        uint256 mintLimit = _saleStatus == 1 ? privateSupply : _saleStatus == 2 ? (privateSupply + wlSupply) : maxSupply;
-        uint256 mintCount = _saleStatus == 1 ? privateCount[msg.sender] : _saleStatus == 2 ? whitelistCount[msg.sender] : promptCount[msg.sender];
         if(totalSupply >= mintLimit) revert SupplyLimitReached();
         if(mintCount >= maxMintPerWallet) revert MintLimitReached();
         _;
@@ -94,18 +91,18 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
         super.supportsInterface(interfaceId);
     }
 
-    function mint(string calldata _prompt) public payable checkRequirements(price, _prompt, 3) {
+    function mint(string calldata _prompt) public payable checkRequirements(price, _prompt, 3, maxSupply, maxPerWallet, promptCount[msg.sender]) {
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function mintWL(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt, 2){
+    function mintWL(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(wlPrice, _prompt, 2, (privateSupply + wlSupply), maxPerWalletWL, whitelistCount[msg.sender]){
         if(!MerkleProof.verify(_merkleProof, merkleRootWL, keccak256(abi.encodePacked(msg.sender)))) revert MerkleProofInvalid();
 
         whitelistCount[msg.sender]++;
         claimPrompt(_prompt, block.timestamp);
     }
 
-    function mintPrivate(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(0, _prompt, 1){
+    function mintPrivate(string calldata _prompt, bytes32[] calldata _merkleProof) public payable checkRequirements(0, _prompt, 1, privateSupply, maxPerWalletPrivate, privateCount[msg.sender]){
         if(!MerkleProof.verify(_merkleProof, merkleRootPrivate, keccak256(abi.encodePacked(msg.sender)))) revert MerkleProofInvalid();
 
         privateCount[msg.sender]++;
