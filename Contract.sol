@@ -46,7 +46,7 @@ contract Prompter is ERC721, Ownable, DefaultOperatorFilterer {
     uint256 public constant maxPerWalletPrivate = 3;
 
     uint256 public constant maxSupply = 10000;
-    uint256 public constant wlSupply = 1000;
+    uint256 public constant wlSupply = 1400;
     uint256 public constant privateSupply = 1260;
     uint256 public totalSupply;
 
